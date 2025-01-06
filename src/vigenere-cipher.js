@@ -20,13 +20,48 @@ const { NotImplementedError } = require('../extensions/index.js');
  * 
  */
 class VigenereCipheringMachine {
-  encrypt() {
-    throw new NotImplementedError('Not implemented');
-    // remove line with error and write your code here
+  constructor(isDirect = true) {
+    this.isDirect = isDirect;
   }
-  decrypt() {
-    throw new NotImplementedError('Not implemented');
-    // remove line with error and write your code here
+
+  encrypt(message, key, adjustKeyCb = val => val) {
+    if (!message || !key) throw new Error('Incorrect arguments!');
+
+    // Should count due to non-english chars inside message which must be skipped
+    let keyLetterNo = 0;
+
+    const output = [...message].map(char => {
+      // Encrypt only English alphabet. Leave 'as is' otherwise.
+      if (!this.isEnglishLetter(char)) return char;
+
+      const isUpperCase = char === char.toUpperCase();
+      const baseCode = isUpperCase ? 65 : 97;
+
+      const keyLetter = key[keyLetterNo % key.length];
+      const keyLetterAdjusted = isUpperCase ? keyLetter.toUpperCase() : keyLetter.toLowerCase();
+      const keyCharCode = keyLetterAdjusted.charCodeAt();
+
+      keyLetterNo++;
+      return String.fromCharCode(
+        (char.charCodeAt() - baseCode + adjustKeyCb(keyCharCode - baseCode)) % 26 + baseCode
+      ).toUpperCase();
+    }).join('');
+
+    return this.isDirect ? output : this.reverseMessage(output);
+  }
+
+  decrypt(message, key) {
+    // TODO: Ideally we would adjust key right here without passing any callback further to encrypt().
+    const shiftKey = key => (26 - key) % 26;
+    return this.encrypt(message, key, shiftKey);
+  }
+
+  reverseMessage(msg) {
+    return [...msg].reverse().join('');
+  }
+
+  isEnglishLetter(char) {
+    return char?.length === 1 && /[a-z]/i.test(char);
   }
 }
 
